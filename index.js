@@ -9,26 +9,26 @@ const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 const holidayResource = 'http://www.holidayscalendar.com/';
 const holidayEmbed = {
-	color: 0x0099ff,
-	title: "Today's Holidays",
-	description: 'Includes all national and international holidays',
-	fields: [],
-	timestamp: new Date(),
+  color: 0x0099ff,
+  title: "Today's Holidays",
+  description: 'Includes all national and international holidays',
+  fields: [],
+  timestamp: new Date(),
 };
 const sequelize = new Sequelize('database', 'user', 'password', {
-	host: 'localhost',
-	dialect: 'sqlite',
-	logging: false,
-	// SQLite only
-	storage: 'database.sqlite',
+  host: 'localhost',
+  dialect: 'sqlite',
+  logging: false,
+  // SQLite only
+  storage: 'database.sqlite',
 });
 const ServerConfig = sequelize.define('serverconfig', {
-	guild: {
-		type: Sequelize.STRING,
-		unique: true,
-	},
-	channel: Sequelize.STRING,
-	prefix: Sequelize.STRING
+  guild: {
+    type: Sequelize.STRING,
+    unique: true,
+  },
+  channel: Sequelize.STRING,
+  prefix: Sequelize.STRING
 });
 let prefix = '.';
 
@@ -37,6 +37,10 @@ bot.login(TOKEN);
 bot.once('ready', () => {
   console.info(`Logged in as ${bot.user.tag}!`);
   ServerConfig.sync();
+});
+
+bot.on('guildCreate', async guild => {
+  await addGuild(guild.id);
 });
 
 bot.on('message', async msg => {
@@ -54,7 +58,7 @@ bot.on('message', async msg => {
     let channel = msg.content.split(' ')[1].replace(/\D/g, '');
     let channels = guild.channels.map(ch => ch.id);
     if (channels.includes(channel)) {
-      setChannel(guild.id, channel, msg);
+      updateChannel(guild.id, channel, msg);
     } else {
       msg.channel.send('Invalid channel!');
     }
@@ -62,7 +66,7 @@ bot.on('message', async msg => {
   if (msg.content.indexOf(`${prefix}setprefix`) == 0) {
     let guild = msg.guild;
     let prefix = msg.content.split(' ')[1];
-    setPrefix(guild.id, prefix, msg);
+    updatePrefix(guild.id, prefix, msg);
   }
   if (msg.content == `${prefix}getholidays`) {
     await getHolidays();
@@ -144,41 +148,21 @@ getHolidays = async function(timesRetried = 0) {
   });
 }
 
-setChannel = async function(guild, channel, msg) {
+addGuild = async function(guild) {
   try {
-    const config = await ServerConfig.create({
-      guild: guild,
-      channel: channel
+    await ServerConfig.create({
+      guild: guild
     });
-    return msg.channel.send(`Channel <#${config.channel}> set.`);
+    console.log('New guild added to database');
+    return;
   }
   catch (e) {
     if (e.name === 'SequelizeUniqueConstraintError') {
-      // Guild already exists in config, so do update
-      updateChannel(guild, channel, msg);
+      // Guild already exists in config, so do nothing
+      console.log('Guild already exists in database');
       return;
     }
     console.log(e);
-    return msg.channel.send('Something went wrong with setting the channel.');
-  }
-}
-
-setPrefix = async function(guild, prefix, msg) {
-  try {
-    const config = await ServerConfig.create({
-      guild: guild,
-      prefix: prefix
-    });
-    return msg.channel.send(`Prefix changed to: ${config.prefix}`);
-  }
-  catch (e) {
-    if (e.name === 'SequelizeUniqueConstraintError') {
-      // Guild already exists in config, so do update
-      updatePrefix(guild, prefix, msg);
-      return;
-    }
-    console.log(e);
-    return msg.channel.send('Something went wrong with changing the prefix.');
   }
 }
 
