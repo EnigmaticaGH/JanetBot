@@ -177,6 +177,7 @@ updateChannel = async function(guild, channel, msg) {
       return msg.channel.send(`Channel <#${channel}> set.`);
     } else {
       await addGuild(guild);
+      await updateChannel(guild, channel, msg);
     }
   }
   catch (e) {
@@ -191,6 +192,7 @@ updatePrefix = async function(guild, prefix, msg) {
       return msg.channel.send(`Prefix changed to: ${prefix}`);
     } else {
       await addGuild(guild);
+      await updatePrefix(guild, prefix, msg);
     }
   }
   catch (e) {
