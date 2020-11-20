@@ -40,6 +40,11 @@ bot.once('ready', () => {
 });
 
 bot.on('message', async msg => {
+  let member = msg.member;
+  let permissions = member.permissions;
+  if (!permissions.has('MANAGE_CHANNELS')) {
+    return;
+  }
   let config = await ServerConfig.findOne({ where: { guild: msg.guild.id } });
   if (config && config.prefix) {
     prefix = config.prefix;
