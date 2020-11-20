@@ -58,7 +58,11 @@ bot.on('message', async msg => {
     let channel = msg.content.split(' ')[1].replace(/\D/g, '');
     let channels = guild.channels.map(ch => ch.id);
     if (channels.includes(channel)) {
-      updateChannel(guild.id, channel, msg);
+      if (canPostInChannel(guild, channel)) {
+        updateChannel(guild.id, channel, msg);
+      } else {
+        msg.channel.send("I can't post in that channel!");
+      }
     } else {
       msg.channel.send('Invalid channel!');
     }
@@ -182,4 +186,34 @@ updatePrefix = async function(guild, prefix, msg) {
   }
   console.log(affectedRows);
   return msg.channel.send('Something went wrong with changing the prefix.');
+}
+
+canPostInChannel = function(guild, channelID) {
+  let botID = bot.user.id;
+  let botMember = guild.members.get(botID);
+  let botRoles = botMember.roles;
+  let canPost = true;
+  for(let [id, override] of guild.channels.get(channelID).permissionOverwrites) {
+    let denied = override.denied;
+    let allowed = override.allowed;
+    if (id == botID) {
+      if (denied.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
+        canPost = false;
+      }
+      if (allowed.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
+        canPost = true;
+      }
+    }
+    for(let [roleID, role] of botRoles) {
+      if (id == roleID) {
+        if (denied.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
+          canPost = false;
+        }
+        if (allowed.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
+          canPost = true;
+        }
+      }
+    }
+  }
+  return canPost;
 }
