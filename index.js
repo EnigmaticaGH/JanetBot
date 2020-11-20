@@ -139,7 +139,7 @@ getHolidays = async function(timesRetried = 0) {
     }
     holidayEmbed.fields.push({
       name: '\u200b',
-			value: '\u200b'
+      value: '\u200b'
     });
     for(let c of channels) {
       bot.channels.get(c).send({embed: holidayEmbed});
