@@ -208,14 +208,6 @@ canPostInChannel = function(guild, channelID) {
   for(let [id, override] of guild.channels.get(channelID).permissionOverwrites) {
     let denied = override.denied;
     let allowed = override.allowed;
-    if (id == botID) {
-      if (denied.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
-        canPost = false;
-      }
-      if (allowed.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
-        canPost = true;
-      }
-    }
     for(let [roleID, role] of botRoles) {
       if (id == roleID) {
         if (denied.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
@@ -224,6 +216,14 @@ canPostInChannel = function(guild, channelID) {
         if (allowed.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
           canPost = true;
         }
+      }
+    }
+    if (id == botID) {
+      if (denied.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
+        canPost = false;
+      }
+      if (allowed.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
+        canPost = true;
       }
     }
   }
