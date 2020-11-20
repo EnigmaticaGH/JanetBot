@@ -171,21 +171,31 @@ addGuild = async function(guild) {
 }
 
 updateChannel = async function(guild, channel, msg) {
-  const affectedRows = await ServerConfig.update({ channel: channel }, { where: { guild: guild } });
-  if (affectedRows > 0) {
-    return msg.channel.send(`Channel <#${channel}> set.`);
+  try {
+    const affectedRows = await ServerConfig.update({ channel: channel }, { where: { guild: guild } });
+    if (affectedRows > 0) {
+      return msg.channel.send(`Channel <#${channel}> set.`);
+    } else {
+      await addGuild(guild);
+    }
   }
-  console.log(affectedRows);
-  return msg.channel.send('Something went wrong with setting the channel.');
+  catch (e) {
+    console.log(e.name);
+  }
 }
 
 updatePrefix = async function(guild, prefix, msg) {
-  const affectedRows = await ServerConfig.update({ prefix: prefix }, { where: { guild: guild } });
-  if (affectedRows > 0) {
-    return msg.channel.send(`Prefix changed to: ${prefix}`);
+  try {
+    const affectedRows = await ServerConfig.update({ prefix: prefix }, { where: { guild: guild } });
+    if (affectedRows > 0) {
+      return msg.channel.send(`Prefix changed to: ${prefix}`);
+    } else {
+      await addGuild(guild);
+    }
   }
-  console.log(affectedRows);
-  return msg.channel.send('Something went wrong with changing the prefix.');
+  catch (e) {
+    console.log(e.name);
+  }
 }
 
 canPostInChannel = function(guild, channelID) {
