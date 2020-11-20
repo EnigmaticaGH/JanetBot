@@ -73,7 +73,7 @@ bot.on('message', async msg => {
     updatePrefix(guild.id, prefix, msg);
   }
   if (msg.content == `${prefix}getholidays`) {
-    await getHolidays();
+    await getHolidays(0, msg);
   }
   if (msg.content == `${prefix}help`) {
     msg.channel.send({embed: {
@@ -99,10 +99,13 @@ schedule.scheduleJob('0 10 * * *', async function() {
   await getHolidays();
 });
 
-getHolidays = async function(timesRetried = 0) {
+getHolidays = async function(timesRetried = 0, msg) {
   console.log('Fetching holidays');
   let channels = [];
   for(let [id, guild] of bot.guilds) {
+    if (msg && msg.guild.id != id) {
+      continue;
+    }
     config = await ServerConfig.findOne({ where: { guild: id } });
     if (config && config.channel) {
       channel = config.channel;
@@ -127,20 +130,17 @@ getHolidays = async function(timesRetried = 0) {
     for(let row of rows) {
       let cells = row.cells;
       let theCellWeCareAbout = cells[0];
-      let cellHTML = theCellWeCareAbout.innerHTML;
-      let cellText = cellHTML.replace(/<br>|<a.+">|<\/a>/ig, '');
-      if (cellText == 'Holiday name') { // We don't care about the header
+      let theOtherCellWeKindaCareAbout = cells[1];
+      let holidayName = getCellText(theCellWeCareAbout);
+      let location = getCellText(theOtherCellWeKindaCareAbout);
+      if (holidayName == 'Holiday name') { // We don't care about the header
         continue;
       }
       holidayEmbed.fields.push({
-        name: '\u200b',
-        value: cellText
+        name: holidayName,
+        value: location
       });
     }
-    holidayEmbed.fields.push({
-      name: '\u200b',
-      value: '\u200b'
-    });
     for(let c of channels) {
       bot.channels.get(c).send({embed: holidayEmbed});
     }
@@ -148,7 +148,7 @@ getHolidays = async function(timesRetried = 0) {
   .catch(err =>  async function() {
     console.error(err.code);
     // Retry
-    await getHolidays(timesRetried++)
+    await getHolidays(timesRetried++, msg)
   });
 }
 
@@ -228,4 +228,10 @@ canPostInChannel = function(guild, channelID) {
     }
   }
   return canPost;
+}
+
+getCellText = function(cell) {
+  let cellHTML = cell.innerHTML;
+  let cellText = cellHTML.replace(/<br>|<a.+">|<\/a>/ig, '');
+  return cellText.trim();
 }
