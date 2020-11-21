@@ -133,6 +133,7 @@ getHolidays = async function(timesRetried = 0, msg) {
   .then(res => res.text())
   .then(body => {
     console.log('Success');
+    holidayEmbed.timestamp = new Date();
     const dom = new JSDOM(body);
     const table = dom.window.document.getElementsByClassName('wphc_table')[0];
     const rows = table.rows;
