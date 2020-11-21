@@ -44,6 +44,14 @@ bot.on('guildCreate', async guild => {
 });
 
 bot.on('message', async msg => {
+  if (msg.content.toLowerCase().indexOf('janet') == 0) {
+    try {
+      msg.channel.send("https://tenor.com/view/smile-laugh-hype-excited-darcy-carden-gif-17311998");
+    }
+    catch (e) {
+      console.error(e.name);
+    }
+  }
   let member = msg.member;
   let permissions = member.permissions;
   if (!permissions.has('MANAGE_CHANNELS')) {
@@ -61,10 +69,20 @@ bot.on('message', async msg => {
       if (canPostInChannel(guild, channel)) {
         updateChannel(guild.id, channel, msg);
       } else {
-        msg.channel.send("I can't post in that channel!");
+        try {
+          msg.channel.send("I can't post in that channel!");
+        }
+        catch (e) {
+          console.error(e.name);
+        }
       }
     } else {
-      msg.channel.send('Invalid channel!');
+      try {
+        msg.channel.send('Invalid channel!');
+      }
+      catch (e) {
+        console.error(e.name);
+      }
     }
   }
   if (msg.content.indexOf(`${prefix}setprefix`) == 0) {
@@ -76,21 +94,26 @@ bot.on('message', async msg => {
     await getHolidays(0, msg);
   }
   if (msg.content == `${prefix}help`) {
-    msg.channel.send({embed: {
-      color: 0x0099ff,
-      title: "Bot Help",
-      description: 'Commands',
-      fields: [{
-        name: `${prefix}help`,
-        value: 'Lists commands'
-      },{
-        name: `${prefix}setchannel <channel>`,
-        value: 'Sets the desired holiday channel'
-      },{
-        name: `${prefix}setprefix <prefix>`,
-        value: 'Sets the desired bot prefix for commands'
-      }]
-    }});
+    try {
+      msg.channel.send({embed: {
+        color: 0x0099ff,
+        title: "Bot Help",
+        description: 'Commands',
+        fields: [{
+          name: `${prefix}help`,
+          value: 'Lists commands'
+        },{
+          name: `${prefix}setchannel <channel>`,
+          value: 'Sets the desired holiday channel'
+        },{
+          name: `${prefix}setprefix <prefix>`,
+          value: 'Sets the desired bot prefix for commands'
+        }]
+      }});
+    }
+    catch (e) {
+      console.error(e.name);
+    }
   }
 });
 
@@ -117,7 +140,12 @@ getHolidays = async function(timesRetried = 0, msg) {
   }
   if (timesRetried >= 5) {
     console.error('Failed after 5 retries. Aborting...');
-    channel.send('Unable to retrieve holidays after 5 tries :(');
+    try {
+      channel.send('Unable to retrieve holidays after 5 tries :(');
+    }
+    catch (e) {
+      console.error(e.name);
+    }
     return;
   }
   fetch(holidayResource)
@@ -142,7 +170,12 @@ getHolidays = async function(timesRetried = 0, msg) {
       });
     }
     for(let c of channels) {
-      bot.channels.get(c).send({embed: holidayEmbed});
+      try {
+        bot.channels.get(c).send({embed: holidayEmbed});
+      }
+      catch (e) {
+        console.error(e.name);
+      }
     }
   })
   .catch(err =>  async function() {
@@ -174,7 +207,13 @@ updateChannel = async function(guild, channel, msg) {
   try {
     const affectedRows = await ServerConfig.update({ channel: channel }, { where: { guild: guild } });
     if (affectedRows > 0) {
-      return msg.channel.send(`Channel <#${channel}> set.`);
+      try {
+        msg.channel.send(`Channel <#${channel}> set.`);
+      }
+      catch (e) {
+        console.error(e.name);
+      }
+      return;
     } else {
       await addGuild(guild);
       await updateChannel(guild, channel, msg);
@@ -189,7 +228,13 @@ updatePrefix = async function(guild, prefix, msg) {
   try {
     const affectedRows = await ServerConfig.update({ prefix: prefix }, { where: { guild: guild } });
     if (affectedRows > 0) {
-      return msg.channel.send(`Prefix changed to: ${prefix}`);
+      try {
+        msg.channel.send(`Prefix changed to: ${prefix}`);
+      }
+      catch (e) {
+        console.error(e.name);
+      }
+      return;
     } else {
       await addGuild(guild);
       await updatePrefix(guild, prefix, msg);
