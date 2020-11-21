@@ -46,6 +46,7 @@ bot.on('guildCreate', async guild => {
 bot.on('message', async msg => {
   if (!canPostInChannel(msg.guild, msg.channel.id)) {
     console.info(`No permission to respond in ${msg.channel.name} on ${msg.guild.name}`);
+    return;
   }
   if (msg.content.toLowerCase().indexOf('janet') == 0) {
     msg.channel.send('https://tenor.com/view/smile-laugh-hype-excited-darcy-carden-gif-17311998');
