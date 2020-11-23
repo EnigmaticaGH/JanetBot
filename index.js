@@ -52,6 +52,10 @@ bot.on('message', async msg => {
     msg.channel.send('https://tenor.com/view/smile-laugh-hype-excited-darcy-carden-gif-17311998');
   }
   let member = msg.member;
+  if (!member) {
+    console.log(`Message in guild ${msg.guild.name} has no member attached. User: ${msg.user.tag}`);
+    return;
+  }
   let permissions = member.permissions;
   if (!permissions.has('MANAGE_CHANNELS')) {
     return;
