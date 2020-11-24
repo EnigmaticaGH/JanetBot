@@ -53,7 +53,7 @@ bot.on('message', async msg => {
   }
   let member = msg.member;
   if (!member) {
-    console.log(`Message in guild ${msg.guild.name} has no member attached. User: ${msg.user.tag}`);
+    console.log(`Message in guild ${msg.guild.name} has no member attached.`);
     return;
   }
   let permissions = member.permissions;
