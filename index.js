@@ -7,6 +7,7 @@ const fetch = require('node-fetch');
 const schedule = require('node-schedule');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
+const striptags = require('striptags');
 const holidayResource = 'http://www.holidayscalendar.com/';
 const holidayEmbed = {
   color: 0x0099ff,
@@ -266,7 +267,6 @@ canPostInChannel = function(guild, channelID) {
 }
 
 getCellText = function(cell) {
-  let cellHTML = cell.innerHTML;
-  let cellText = cellHTML.replace(/<br>|<a.+">|<\/a>/ig, '');
+  let cellText = striptags(cell.innerHTML);
   return cellText.trim();
 }
