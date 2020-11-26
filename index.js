@@ -39,23 +39,30 @@ bot.once('ready', () => {
   ServerConfig.sync();
 });
 
+// Bot was invited to new discord server, to add it to the database
 bot.on('guildCreate', async guild => {
   await addGuild(guild.id);
 });
 
 bot.on('message', async msg => {
+  // Check to see if the bot can reply to the message in the channel
   if (!canPostInChannel(msg.guild, msg.channel.id)) {
     console.info(`No permission to respond in ${msg.channel.name} on ${msg.guild.name}`);
     return;
   }
+
+  // Fun GIF reply :)
   if (msg.content.toLowerCase().indexOf('janet') == 0) {
     msg.channel.send('https://tenor.com/view/smile-laugh-hype-excited-darcy-carden-gif-17311998');
   }
+
+  // For bot administrative commands, check permission of sender to make sure they can use the commands
   let member = msg.member;
   if (!member) {
     console.log(`Message in guild ${msg.guild.name} has no member attached.`);
     return;
   }
+  // Server mods/admins will usually have the Manage Channel permission. No other reason I specifically picked this one ;)
   let permissions = member.permissions;
   if (!permissions.has('MANAGE_CHANNELS')) {
     return;
@@ -83,6 +90,7 @@ bot.on('message', async msg => {
     let prefix = msg.content.split(' ')[1];
     updatePrefix(guild.id, prefix, msg);
   }
+  // 'Hidden' command, mostly for testing
   if (msg.content == `${prefix}getholidays`) {
     await getHolidays(0, msg);
   }
@@ -110,11 +118,14 @@ schedule.scheduleJob('0 10 * * *', async function() {
   await getHolidays();
 });
 
+// Fetch holidays from website, attempt 5 times before giving up
+// If second parameter msg is populated, it's a test command and should not message all available servers in database
 getHolidays = async function(timesRetried = 0, msg) {
   console.log('Fetching holidays');
   let channels = [];
   for(let [id, guild] of bot.guilds) {
     if (msg && msg.guild.id != id) {
+      // If msg parameter is specified, only include the server the message came from
       continue;
     }
     config = await ServerConfig.findOne({ where: { guild: id } });
@@ -162,7 +173,6 @@ getHolidays = async function(timesRetried = 0, msg) {
   })
   .catch(err =>  async function() {
     console.error(err.code);
-    // Retry
     await getHolidays(timesRetried++, msg)
   });
 }
