@@ -1,7 +1,11 @@
 require('dotenv').config();
-const Discord = require('discord.js');
+const { Client, Intents } = require('discord.js');
 const Sequelize = require('sequelize');
-const bot = new Discord.Client();
+const intents = new Intents([
+  Intents.NON_PRIVILEGED,
+  "GUILD_MEMBERS"
+]);
+const bot = new Client({ ws: { intents } });
 const TOKEN = process.env.TOKEN;
 const fetch = require('node-fetch');
 const schedule = require('node-schedule');
@@ -31,6 +35,14 @@ const ServerConfig = sequelize.define('serverconfig', {
   channel: Sequelize.STRING,
   prefix: Sequelize.STRING
 });
+//birthday module: data
+const Birthdays = sequelize.define('birthdays', {
+  discordUserID: {
+    type: Sequelize.STRING,
+    unique: true,
+  },
+  userBirthday: Sequelize.DATE
+});
 let prefix = '.';
 
 bot.login(TOKEN);
@@ -38,6 +50,7 @@ bot.login(TOKEN);
 bot.once('ready', () => {
   console.info(`Logged in as ${bot.user.tag}!`);
   ServerConfig.sync();
+  Birthdays.sync();
 });
 
 // Bot was invited to new discord server, to add it to the database
@@ -46,6 +59,12 @@ bot.on('guildCreate', async guild => {
 });
 
 bot.on('message', async msg => {
+  let config = await ServerConfig.findOne({ where: { guild: msg.guild.id } });
+  let member = msg.member;
+  if (config && config.prefix) {
+    prefix = config.prefix;
+  }
+
   // Check to see if the bot can reply to the message in the channel
   if (!canPostInChannel(msg.guild, msg.channel.id)) {
     console.info(`No permission to respond in ${msg.channel.name} on ${msg.guild.name}`);
@@ -57,8 +76,22 @@ bot.on('message', async msg => {
     msg.channel.send('https://tenor.com/view/smile-laugh-hype-excited-darcy-carden-gif-17311998');
   }
 
+  // Birthday command
+  if (msg.content.indexOf(`${prefix}setbirthday`) == 0) {
+    let userID = member.id;
+    let bdate = msg.content.split(' ')[1];
+    let userBDate = new Date(bdate);
+
+    //validate date
+    if (userBDate == 'Invalid Date') {
+      msg.channel.send(`Invalid date. Check the format (MM/DD/YYYY)!`)
+    } else {
+      await addBirthday(userID, userBDate);
+      msg.channel.send(`Birthday added!`)
+    }
+  }
+
   // For bot administrative commands, check permission of sender to make sure they can use the commands
-  let member = msg.member;
   if (!member) {
     console.log(`Message in guild ${msg.guild.name} has no member attached.`);
     return;
@@ -68,10 +101,7 @@ bot.on('message', async msg => {
   if (!permissions.has('MANAGE_CHANNELS')) {
     return;
   }
-  let config = await ServerConfig.findOne({ where: { guild: msg.guild.id } });
-  if (config && config.prefix) {
-    prefix = config.prefix;
-  }
+  
   if (msg.content.indexOf(`${prefix}setchannel`) == 0) {
     let guild = msg.guild;
     let channel = msg.content.split(' ')[1].replace(/\D/g, '');
@@ -91,10 +121,31 @@ bot.on('message', async msg => {
     let prefix = msg.content.split(' ')[1];
     updatePrefix(guild.id, prefix, msg);
   }
-  // 'Hidden' command, mostly for testing
+  // 'Hidden' commands, mostly for testing
   if (msg.content == `${prefix}getholidays`) {
     await getHolidays(0, msg);
   }
+  if (msg.content == `${prefix}getbirthdays`) {
+    let birthdays = await getBirthdays();
+    let responseEmbed = {
+      color: 0x0099ff,
+      title: "Birthdays",
+      description: 'List of birthdays',
+      fields: []
+    };
+
+    for (let bday of birthdays) {
+      console.log(msg.guild.members.get(bday.discordUserID));
+      /* let username = await msg.guild.members.fetch(bday.discordUserID);
+      responseEmbed.fields.push({
+        name: username.displayName,
+        value: bday.userBirthday
+      }); */
+    }
+
+    //msg.channel.send({embed: responseEmbed});
+  }
+
   if (msg.content == `${prefix}help`) {
     msg.channel.send({embed: {
       color: 0x0099ff,
@@ -269,4 +320,45 @@ canPostInChannel = function(guild, channelID) {
 getCellText = function(cell) {
   let cellText = striptags(cell.innerHTML);
   return cellText.trim();
+}
+
+// Birthday module
+addBirthday = async function(userID, birthday) {
+  try {
+    await Birthdays.create({
+      discordUserID: userID,
+      userBirthday: birthday
+    });
+    console.log('New birthday added to database');
+    return;
+  }
+  catch (e) {
+    if (e.name === 'SequelizeUniqueConstraintError') {
+      // Birthday already exists in the database, update it
+      console.log('Birthday already exists in database');
+      try {
+        await Birthdays.update({
+          userBirthday: birthday
+        },{
+          where: {
+            discordUserID: userID
+          }
+        });
+      } catch (err) {
+        console.log(err);
+      }
+      return;
+    }
+    console.log(e);
+  }
+}
+
+getBirthdays = async function() {
+  let bdays;
+  try {
+    bdays = await Birthdays.findAll();
+  } catch (err) {
+    console.log(err);
+  }
+  return bdays;
 }
