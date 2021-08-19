@@ -1,11 +1,15 @@
 require('dotenv').config();
-const { Client, Intents } = require('discord.js');
+const fs = require('fs');
+const { Client, Intents, Collection } = require('discord.js');
+const { REST } = require('@discordjs/rest');
+const { Routes } = require('discord-api-types/v9');
 const Sequelize = require('sequelize');
 const intents = new Intents([
-  Intents.NON_PRIVILEGED,
-  "GUILD_MEMBERS"
+  Intents.FLAGS.GUILD_MEMBERS,
+  Intents.FLAGS.GUILD_MESSAGES, 
+  Intents.FLAGS.GUILDS
 ]);
-const bot = new Client({ ws: { intents } });
+const bot = new Client({ intents: intents });
 const TOKEN = process.env.TOKEN;
 const fetch = require('node-fetch');
 const schedule = require('node-schedule');
@@ -45,20 +49,50 @@ const Birthdays = sequelize.define('birthdays', {
 });
 let prefix = '.';
 
+bot.commands = new Collection();
+const commands = [];
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+for (const file of commandFiles) {
+	const command = require(`./commands/${file}`);
+	commands.push(command.data.toJSON());
+	bot.commands.set(command.data.name, command);
+}
+
+const rest = new REST({ version: '9' }).setToken(TOKEN);
+
 bot.login(TOKEN);
 
 bot.once('ready', () => {
   console.info(`Logged in as ${bot.user.tag}!`);
   ServerConfig.sync();
   Birthdays.sync();
+  for(let [guildId, guild] of bot.guilds.cache) {
+    registerCommands(guild);
+  }
 });
 
 // Bot was invited to new discord server, to add it to the database
 bot.on('guildCreate', async guild => {
+  registerCommands(guild);
   await addGuild(guild.id);
 });
 
-bot.on('message', async msg => {
+bot.on('interactionCreate', async interaction => {
+  if (!interaction.isCommand()) return;
+
+  const command = bot.commands.get(interaction.commandName);
+
+	if (!command) return;
+
+	try {
+		await command.execute(interaction);
+	} catch (error) {
+		console.error(error);
+		await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+	}
+});
+
+bot.on('messageCreate', async msg => {
   let config = await ServerConfig.findOne({ where: { guild: msg.guild.id } });
   let member = msg.member;
   if (config && config.prefix) {
@@ -135,7 +169,8 @@ bot.on('message', async msg => {
     };
 
     for (let bday of birthdays) {
-      console.log(msg.guild.members.get(bday.discordUserID));
+      let member = await msg.guild.members.fetch(bday.discordUserID);
+      let displayName = member.displayName;
       /* let username = await msg.guild.members.fetch(bday.discordUserID);
       responseEmbed.fields.push({
         name: username.displayName,
@@ -147,7 +182,7 @@ bot.on('message', async msg => {
   }
 
   if (msg.content == `${prefix}help`) {
-    msg.channel.send({embed: {
+    msg.channel.send({embeds: [{
       color: 0x0099ff,
       title: "Bot Help",
       description: 'Commands',
@@ -161,7 +196,7 @@ bot.on('message', async msg => {
         name: `${prefix}setprefix <prefix>`,
         value: 'Sets the desired bot prefix for commands'
       }]
-    }});
+    }]});
   }
 });
 
@@ -192,7 +227,9 @@ getHolidays = async function(timesRetried = 0, msg) {
   if (timesRetried >= 5) {
     console.error('Failed after 5 retries. Aborting...');
     for(let c of channels) {
-      bot.channels.get(c).send('Unable to retrieve holidays after 5 tries :(');
+      bot.channels.fetch(c).then(ch => {
+        ch.send('Unable to retrieve holidays after 5 tries :(');
+      });
     }
     return;
   }
@@ -220,7 +257,9 @@ getHolidays = async function(timesRetried = 0, msg) {
       });
     }
     for(let c of channels) {
-      bot.channels.get(c).send({embed: holidayEmbed});
+      bot.channels.fetch(c).then(ch => {
+        ch.send({embeds: [holidayEmbed]});
+      })
     }
   })
   .catch(err =>  async function() {
@@ -287,15 +326,16 @@ updatePrefix = async function(guild, prefix, msg) {
   }
 }
 
-canPostInChannel = function(guild, channelID) {
+canPostInChannel = async function(guild, channelID) {
   let botID = bot.user.id;
-  let botMember = guild.members.get(botID);
+  let botMember = await guild.members.fetch(botID);
   let botRoles = botMember.roles;
   let canPost = true;
-  for(let [id, override] of guild.channels.get(channelID).permissionOverwrites) {
-    let denied = override.denied;
-    let allowed = override.allowed;
-    for(let [roleID, role] of botRoles) {
+  let ch = await guild.channels.fetch(channelID);
+  for(let [id, override] of ch.permissionOverwrites.cache) {
+    let denied = override.deny;
+    let allowed = override.allow;
+    for(let [roleID, role] of botRoles.cache) {
       if (id == roleID) {
         if (denied.any(['VIEW_CHANNEL', 'SEND_MESSAGES'])) {
           canPost = false;
@@ -353,10 +393,27 @@ addBirthday = async function(userID, birthday) {
   }
 }
 
+registerCommands = async function(guild) {
+	try {
+    let botId = bot.user.id;
+    let guildId = guild.id;
+		console.log(`Started refreshing application (/) commands for guild ${guild.name}.`);
+
+		await rest.put(
+			Routes.applicationGuildCommands(botId, guildId),
+			{ body: commands },
+		);
+
+		console.log('Successfully reloaded application (/) commands.');
+	} catch (error) {
+		console.error(error);
+	}
+};
+
 getBirthdays = async function() {
   let bdays;
   try {
-    bdays = await Birthdays.findAll();
+    bdays = await Birthdays.findAll({raw: true});
   } catch (err) {
     console.log(err);
   }
