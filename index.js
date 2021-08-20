@@ -37,7 +37,8 @@ const ServerConfig = sequelize.define('serverconfig', {
     unique: true,
   },
   channel: Sequelize.STRING,
-  prefix: Sequelize.STRING
+  prefix: Sequelize.STRING,
+  birthdayChannel: Sequelize.STRING
 });
 //birthday module: data
 const Birthdays = sequelize.define('birthdays', {
@@ -139,7 +140,7 @@ bot.on('messageCreate', async msg => {
   if (msg.content.indexOf(`${prefix}setchannel`) == 0) {
     let guild = msg.guild;
     let channel = msg.content.split(' ')[1].replace(/\D/g, '');
-    let channels = guild.channels.map(ch => ch.id);
+    let channels = guild.channels.cache.map(ch => ch.id);
     if (channels.includes(channel)) {
       if (canPostInChannel(guild, channel)) {
         updateChannel(guild.id, channel, msg);
@@ -150,6 +151,23 @@ bot.on('messageCreate', async msg => {
       msg.channel.send('Invalid channel!');
     }
   }
+
+  // Birthday mod - TODO: move to its own command later
+  if (msg.content.indexOf(`${prefix}setupbirthdaychannel`) == 0) {
+    let guild = msg.guild;
+    let channel = msg.content.split(' ')[1].replace(/\D/g, '');
+    let channels = guild.channels.cache.map(ch => ch.id);
+    if (channels.includes(channel)) {
+      if (canPostInChannel(guild, channel)) {
+        updateBirthdayChannel(guild.id, channel, msg);
+      } else {
+        msg.channel.send("I can't post in that channel!");
+      }
+    } else {
+      msg.channel.send('Invalid channel!');
+    }
+  }
+
   if (msg.content.indexOf(`${prefix}setprefix`) == 0) {
     let guild = msg.guild;
     let prefix = msg.content.split(' ')[1];
@@ -170,15 +188,14 @@ bot.on('messageCreate', async msg => {
 
     for (let bday of birthdays) {
       let member = await msg.guild.members.fetch(bday.discordUserID);
-      let displayName = member.displayName;
-      /* let username = await msg.guild.members.fetch(bday.discordUserID);
+      let memberbday = new Date(bday.userBirthday).toLocaleDateString('en-US');
       responseEmbed.fields.push({
-        name: username.displayName,
-        value: bday.userBirthday
-      }); */
+        name: member.displayName,
+        value: memberbday
+      });
     }
 
-    //msg.channel.send({embed: responseEmbed});
+    msg.channel.send({embeds: [responseEmbed]});
   }
 
   if (msg.content == `${prefix}help`) {
@@ -299,6 +316,26 @@ updateChannel = async function(guild, channel, msg) {
     } else {
       await addGuild(guild);
       await updateChannel(guild, channel, msg);
+    }
+  }
+  catch (e) {
+    console.log(e.name);
+  }
+}
+
+updateBirthdayChannel = async function(guild, channel, msg) {
+  try {
+    const affectedRows = await ServerConfig.update({ birthdayChannel: channel }, { where: { guild: guild } });
+    if (affectedRows > 0) {
+      if (!canPostInChannel(msg.guild, msg.channel.id)) {
+        console.info(`No permission to respond in ${msg.channel.name} on ${msg.guild.name}`);
+        return;
+      } else {
+        return msg.channel.send(`Channel <#${channel}> set.`);
+      }
+    } else {
+      await addGuild(guild);
+      await updateBirthdayChannel(guild, channel, msg);
     }
   }
   catch (e) {
