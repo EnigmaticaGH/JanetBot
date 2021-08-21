@@ -220,6 +220,7 @@ bot.on('messageCreate', async msg => {
 schedule.scheduleJob('0 10 * * *', async function() {
   console.log('Job started');
   await getHolidays();
+  await checkBirthdays(); 
 });
 
 // Fetch holidays from website, attempt 5 times before giving up
@@ -412,7 +413,7 @@ addBirthday = async function(userID, birthday) {
   catch (e) {
     if (e.name === 'SequelizeUniqueConstraintError') {
       // Birthday already exists in the database, update it
-      console.log('Birthday already exists in database');
+      console.log('Birthday already exists in database, updating it...');
       try {
         await Birthdays.update({
           userBirthday: birthday
@@ -451,8 +452,52 @@ getBirthdays = async function() {
   let bdays;
   try {
     bdays = await Birthdays.findAll({raw: true});
+    // checkBirthdays();
   } catch (err) {
     console.log(err);
   }
   return bdays;
+}
+
+checkBirthdays = async function() {
+  console.log('Checking birthdays! --Getting birthdays');
+  let bdquery = "SELECT discordUserID AS userid, strftime('%m%d', userBirthday) AS bdate FROM birthdays WHERE bdate = strftime('%m%d', 'now');";
+  const [results, metadata] = await sequelize.query(bdquery);
+  console.log('result: ', results);
+  console.log('metadata: ', metadata);
+
+  if(results.length > 0) {
+    let channels = [];
+    console.log('--Getting channels')
+    for(let [id, guild] of bot.guilds.cache) {
+      config = await ServerConfig.findOne({ where: { guild: id } });
+      if (config && config.birthdayChannel) {
+        channel = config.birthdayChannel;
+        console.log(`Channel <#${channel}> found for ${guild.name}`);
+        channels.push(channel);
+      } else {
+        console.log(`No channel set for ${guild.name}`);
+      }
+    }
+    
+    console.log('--Trying to post birthdays on each channel')
+    for(let ch of channels) {
+      let botChannel = await bot.channels.fetch(ch);
+      let guild = botChannel.guild;
+      for(let bd of results) {
+        try {
+          let member = await guild.members.fetch(bd.userid);
+          let displayName = member.displayName;
+          bot.channels.fetch(ch).then(ch => {
+            ch.send(`Happy Birthday ${displayName}! 🥳`);
+          })
+        } catch (err) {
+          console.log(err);
+          console.log('Member probs not found, do nothing (for now)...');
+        }
+      }
+    }
+  } else {
+    console.log('No birthdays today!');
+  }
 }
