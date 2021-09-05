@@ -46,7 +46,12 @@ const Birthdays = sequelize.define('birthdays', {
     type: Sequelize.STRING,
     unique: true,
   },
-  userBirthday: Sequelize.DATE
+  userBirthday: Sequelize.DATE,
+  doMention: {
+    type: Sequelize.BIGINT,
+    allowNull: false,
+    defaultValue: false
+  }
 });
 let prefix = '.';
 
@@ -114,14 +119,18 @@ bot.on('messageCreate', async msg => {
   // Birthday command
   if (msg.content.indexOf(`${prefix}setbirthday`) == 0) {
     let userID = member.id;
-    let bdate = msg.content.split(' ')[1];
+    let params = msg.content.split(' ');
+    let bdate = params[1];
+    let mentionOpt;
     let userBDate = new Date(bdate);
 
     //validate date
     if (userBDate == 'Invalid Date') {
       msg.channel.send(`Invalid date. Check the format (MM/DD/YYYY)!`)
     } else {
-      await addBirthday(userID, userBDate);
+      mentionOpt = (params[2] == 'doMention' || params[2] == 'mention') ? true : false;
+      
+      await addBirthday(userID, userBDate, mentionOpt);
       msg.channel.send(`Birthday added!`)
     }
   }
@@ -401,11 +410,12 @@ getCellText = function(cell) {
 }
 
 // Birthday module
-addBirthday = async function(userID, birthday) {
+addBirthday = async function(userID, birthday, doMention) {
   try {
     await Birthdays.create({
       discordUserID: userID,
-      userBirthday: birthday
+      userBirthday: birthday,
+      doMention: doMention
     });
     console.log('New birthday added to database');
     return;
@@ -413,10 +423,11 @@ addBirthday = async function(userID, birthday) {
   catch (e) {
     if (e.name === 'SequelizeUniqueConstraintError') {
       // Birthday already exists in the database, update it
-      console.log('Birthday already exists in database, updating it...');
+      console.log('Birthday already exists in database. Updating values...');
       try {
         await Birthdays.update({
-          userBirthday: birthday
+          userBirthday: birthday,
+          doMention: doMention
         },{
           where: {
             discordUserID: userID
@@ -452,7 +463,7 @@ getBirthdays = async function() {
   let bdays;
   try {
     bdays = await Birthdays.findAll({raw: true});
-    // checkBirthdays();
+    checkBirthdays();
   } catch (err) {
     console.log(err);
   }
@@ -461,7 +472,7 @@ getBirthdays = async function() {
 
 checkBirthdays = async function() {
   console.log('Checking birthdays! --Getting birthdays');
-  let bdquery = "SELECT discordUserID AS userid, strftime('%m%d', userBirthday) AS bdate FROM birthdays WHERE bdate = strftime('%m%d', 'now');";
+  let bdquery = "SELECT discordUserID AS userid, strftime('%m%d', userBirthday) AS bdate, doMention FROM birthdays WHERE bdate = strftime('%m%d', 'now');";
   const [results, metadata] = await sequelize.query(bdquery);
   console.log('result: ', results);
   console.log('metadata: ', metadata);
@@ -488,6 +499,10 @@ checkBirthdays = async function() {
         try {
           let member = await guild.members.fetch(bd.userid);
           let displayName = member.displayName;
+          //mention option
+          if(bd.doMention == true)
+            displayName = `<@${bd.userid}>`;
+          //post message
           bot.channels.fetch(ch).then(ch => {
             ch.send(`Happy Birthday ${displayName}! 🥳`);
           })
