@@ -471,7 +471,7 @@ getBirthdays = async function() {
 }
 
 checkBirthdays = async function() {
-  console.log('Checking birthdays! --Getting birthdays');
+  console.log('Checking birthdays!\n--\nGetting birthdays');
   let bdquery = "SELECT discordUserID AS userid, strftime('%m%d', userBirthday) AS bdate, doMention FROM birthdays WHERE bdate = strftime('%m%d', 'now');";
   const [results, metadata] = await sequelize.query(bdquery);
   console.log('result: ', results);
@@ -479,7 +479,7 @@ checkBirthdays = async function() {
 
   if(results.length > 0) {
     let channels = [];
-    console.log('--Getting channels')
+    console.log('--\nGetting channels');
     for(let [id, guild] of bot.guilds.cache) {
       config = await ServerConfig.findOne({ where: { guild: id } });
       if (config && config.birthdayChannel) {
@@ -491,7 +491,7 @@ checkBirthdays = async function() {
       }
     }
     
-    console.log('--Trying to post birthdays on each channel')
+    console.log(`--\nTrying to post birthdays on channels\nChannel size: ${channels.length}\n--`);
     for(let ch of channels) {
       let botChannel = await bot.channels.fetch(ch);
       let guild = botChannel.guild;
@@ -500,19 +500,24 @@ checkBirthdays = async function() {
           let member = await guild.members.fetch(bd.userid);
           let displayName = member.displayName;
           //mention option
-          if(bd.doMention == true)
+          if(bd.doMention)
             displayName = `<@${bd.userid}>`;
+          //random emoji
+          let emojiRoulette = ['🥳', '🎁', '🎂', '🎉', '🎊'];
+          let bdayEmoji = emojiRoulette[Math.floor(Math.random() * emojiRoulette.length)];
+  
           //post message
           bot.channels.fetch(ch).then(ch => {
-            ch.send(`Happy Birthday ${displayName}! 🥳`);
+            ch.send(`Happy Birthday ${displayName}! ${bdayEmoji}`);
           })
         } catch (err) {
           console.log(err);
-          console.log('Member probs not found, do nothing (for now)...');
+          console.log('Member probs not found, do nothing (for now)...\n--');
         }
       }
     }
   } else {
-    console.log('No birthdays today!');
+    console.log('No birthdays today!\n--');
   }
+  console.log('Finished!\n--')
 }
