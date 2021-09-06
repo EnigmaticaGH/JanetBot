@@ -48,7 +48,7 @@ const Birthdays = sequelize.define('birthdays', {
   },
   userBirthday: Sequelize.DATE,
   doMention: {
-    type: Sequelize.BIGINT,
+    type: Sequelize.BOOLEAN,
     allowNull: false,
     defaultValue: false
   }
