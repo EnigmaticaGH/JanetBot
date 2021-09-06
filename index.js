@@ -70,8 +70,8 @@ bot.login(TOKEN);
 
 bot.once('ready', () => {
   console.info(`Logged in as ${bot.user.tag}!`);
-  ServerConfig.sync();
-  Birthdays.sync();
+  ServerConfig.sync({ alter: true });
+  Birthdays.sync({ alter: true });
   for(let [guildId, guild] of bot.guilds.cache) {
     registerCommands(guild);
   }
