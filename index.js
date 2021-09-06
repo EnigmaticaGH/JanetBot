@@ -126,12 +126,12 @@ bot.on('messageCreate', async msg => {
 
     //validate date
     if (userBDate == 'Invalid Date') {
-      msg.channel.send(`Invalid date. Check the format (MM/DD/YYYY)!`)
+      msg.channel.send('Invalid date. Check the format (MM/DD/YYYY)!')
     } else {
       mentionOpt = params[2] == 'mention';
       
       await addBirthday(userID, userBDate, mentionOpt);
-      msg.channel.send(`Birthday added!`)
+      msg.channel.send('Birthday added!');
     }
   }
 
@@ -221,6 +221,12 @@ bot.on('messageCreate', async msg => {
       },{
         name: `${prefix}setprefix <prefix>`,
         value: 'Sets the desired bot prefix for commands'
+      },{
+        name: `${prefix}setbirthday <date>`,
+        value: 'Sets your birthday, using the mm/dd/yyyy format (year can be any valid one). Add the word mention at the end to notify the bot to mention you'
+      },{
+        name: `${prefix}setupbirthdaychannel <prefix>`,
+        value: 'Sets the desired birthday channel'
       }]
     }]});
   }
