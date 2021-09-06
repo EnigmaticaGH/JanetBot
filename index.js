@@ -128,7 +128,7 @@ bot.on('messageCreate', async msg => {
     if (userBDate == 'Invalid Date') {
       msg.channel.send(`Invalid date. Check the format (MM/DD/YYYY)!`)
     } else {
-      mentionOpt = (params[2] == 'doMention' || params[2] == 'mention') ? true : false;
+      mentionOpt = params[2] == 'mention';
       
       await addBirthday(userID, userBDate, mentionOpt);
       msg.channel.send(`Birthday added!`)
