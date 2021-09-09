@@ -70,8 +70,9 @@ bot.login(TOKEN);
 
 bot.once('ready', () => {
   console.info(`Logged in as ${bot.user.tag}!`);
-  ServerConfig.sync({ alter: true });
-  Birthdays.sync({ alter: true });
+  dbSync(ServerConfig);
+  dbSync(Birthdays);
+  
   for(let [guildId, guild] of bot.guilds.cache) {
     registerCommands(guild);
   }
@@ -453,9 +454,10 @@ registerCommands = async function(guild) {
 			{ body: commands },
 		);
 
-		console.log('Successfully reloaded application (/) commands.');
+		console.log(`Successfully reloaded application (/) commands for ${guild.name}.`);
 	} catch (error) {
-		console.error(error);
+		//console.error(error);
+    console.error(`Could not register application (/) commands for ${guild.name}. Reason: ${error.rawError.message}`);
 	}
 };
 
@@ -520,4 +522,13 @@ checkBirthdays = async function() {
     console.log('No birthdays today!\n--');
   }
   console.log('Finished!\n--')
+}
+
+dbSync = function(table) {
+  try {
+    table.sync();
+  } catch(e) {
+    console.info(e);
+    table.sync({alter: true});
+  }
 }
