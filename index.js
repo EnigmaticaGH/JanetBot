@@ -244,7 +244,7 @@ schedule.scheduleJob('0 10 * * *', async function() {
 getHolidays = async function(timesRetried = 0, msg) {
   console.log('Fetching holidays');
   let channels = [];
-  for(let [id, guild] of bot.guilds) {
+  for(let [id, guild] of bot.guilds.cache) {
     if (msg && msg.guild.id != id) {
       // If msg parameter is specified, only include the server the message came from
       continue;
