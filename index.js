@@ -386,7 +386,12 @@ canPostInChannel = async function(guild, channelID) {
   let botRoles = botMember.roles;
   let canPost = true;
   let ch = await guild.channels.fetch(channelID);
-  for(let [id, override] of ch.permissionOverwrites.cache) {
+  let permissionOverwrites = ch.permissionOverwrites;
+  if (!ch.permissionOverwrites) {
+    console.log(`No permission overwrites for channel ${ch.name} in ${guild.name}`);
+    return true;
+  }
+  for(let [id, override] of permissionOverwrites.cache) {
     let denied = override.deny;
     let allowed = override.allow;
     for(let [roleID, role] of botRoles.cache) {
